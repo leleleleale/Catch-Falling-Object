@@ -25,7 +25,7 @@ Catch Falling Object is a simple 2D game built using Python and Tkinter. Players
 ## How to Run
 
 ```bash
-python PraktikumPBO_TugasAkhir3.py
+Catch Falling Object.py
 ```
 
 ## OOP Concepts Used
