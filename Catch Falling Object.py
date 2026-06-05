@@ -2,6 +2,7 @@ import tkinter as tk
 import random
 import time
 
+
 # ======================== CLASS OBJECT ========================
 class GameObject:
     def __init__(self, canvas, x, y, speed, skor, jenis):
