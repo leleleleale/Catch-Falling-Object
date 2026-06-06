@@ -82,8 +82,8 @@ class Pencil(FallingObject):
     name        = 'Pensil'
     score_value = 10
     is_good     = True
-    width       = 12
-    height      = 46
+    width       = 10
+    height      = 44
 
     def _draw(self):
         fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
@@ -108,8 +108,8 @@ class Book(FallingObject):
     name        = 'Buku'
     score_value = 20
     is_good     = True
-    width       = 38
-    height      = 32
+    width       = 36
+    height      = 30
 
     def _draw(self):
         fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
