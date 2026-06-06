@@ -193,8 +193,8 @@ class Trash(FallingObject):
 # ══════════════════════════════════════════════════════════════════
 
 class Basket:
-    WIDTH  = 80
-    HEIGHT = 36
+    WIDTH  = 78
+    HEIGHT = 34
     SPEED  = 22
     TAG    = 'basket'
 
@@ -279,7 +279,7 @@ class ScorePopup:
 # ══════════════════════════════════════════════════════════════════
 
 class ScoreManager:
-    TARGET = 500
+    TARGET = 450
 
     def __init__(self, difficulty):
         self.score = 0
