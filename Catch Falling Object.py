@@ -1,5 +1,4 @@
-# Praktikum PBO - Tugas Akhir
- # Tim 1
+
 
 import tkinter as tk
 import random
