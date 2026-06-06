@@ -1,371 +1,832 @@
+# Praktikum PBO - Tugas Akhir
+ # Tim 1
+
 import tkinter as tk
 import random
-import time
 
 
-# ======================== CLASS OBJECT ========================
-class GameObject:
-    def __init__(self, canvas, x, y, speed, skor, jenis):
+# ══════════════════════════════════════════════════════════════════
+#  THEME MANAGER
+# ══════════════════════════════════════════════════════════════════
+
+class ThemeManager:
+    _THEMES = {
+        'light': dict(bg='#FFFFFF', fg='#000000',
+                      btn_bg='#000000', btn_fg='#FFFFFF',
+                      canvas_bg='#FFFFFF'),
+        'dark':  dict(bg='#111111', fg='#FFFFFF',
+                      btn_bg='#FFFFFF', btn_fg='#000000',
+                      canvas_bg='#111111'),
+    }
+
+    def __init__(self):
+        self._mode = 'light'
+
+    def get(self):
+        return self._THEMES[self._mode]
+
+    def toggle(self):
+        self._mode = 'dark' if self._mode == 'light' else 'light'
+
+    def is_dark(self):
+        return self._mode == 'dark'
+
+
+# ══════════════════════════════════════════════════════════════════
+#  FALLING OBJECTS  (Base + Subclasses)
+# ══════════════════════════════════════════════════════════════════
+
+class FallingObject:
+    """Abstract base for all items that fall from the sky."""
+    name        = '?'
+    score_value = 0
+    is_good     = True
+    width       = 30
+    height      = 30
+
+    def __init__(self, canvas, x, y, theme):
         self.canvas = canvas
-        self.x = x
-        self.y = y
-        self.speed = speed
-        self.skor = skor
-        self.jenis = jenis     
-        self.id = None
-        self.width = 30
-        self.height = 30
-        self.active = True
+        self.x      = x
+        self.y      = y
+        self.theme  = theme
+        self._ids   = []
+        self._draw()
 
-    def draw(self):
-        color = "white"
-        if self.jenis == 'pensil':
-            self.id = self.canvas.create_rectangle(
-                self.x, self.y, self.x+6, self.y+25, fill=color, outline=color)
-        elif self.jenis == 'buku':
-            self.id = self.canvas.create_rectangle(
-                self.x, self.y, self.x+28, self.y+22, fill=color, outline=color)
-            self.canvas.create_line(
-                self.x+14, self.y, self.x+14, self.y+22, fill="black")
-        elif self.jenis == 'penghapus':
-            self.id = self.canvas.create_rectangle(
-                self.x, self.y, self.x+18, self.y+20, fill=color, outline=color)
-        elif self.jenis == 'penggaris':
-            self.id = self.canvas.create_rectangle(
-                self.x, self.y, self.x+8, self.y+30, fill=color, outline=color)
-        elif self.jenis == 'sampah':
-            self.id = self.canvas.create_polygon(
-                self.x, self.y+15, self.x+10, self.y,
-                self.x+22, self.y+10, self.x+18, self.y+25,
-                self.x+5, self.y+22, fill=color, outline=color)
+    # ── override in subclasses ────────────────
+    def _draw(self):
+        pass
 
-    def fall(self):
-        if self.active:
-            self.canvas.move(self.id, 0, self.speed)
-            self.y += self.speed
-            if self.y > 720:
-                self.active = False
-                self.canvas.delete(self.id)
-                return False
-        return True
+    # ── helpers ───────────────────────────────
+    def _reg(self, *ids):
+        """Register canvas item IDs for later deletion/movement."""
+        self._ids.extend(ids)
 
-    def get_coords(self):
-        if self.active and self.id:
-            return self.canvas.bbox(self.id)
-        return None
+    def move(self, dy):
+        self.y += dy
+        for cid in self._ids:
+            self.canvas.move(cid, 0, dy)
+
+    def delete(self):
+        for cid in self._ids:
+            self.canvas.delete(cid)
+        self._ids.clear()
+
+    @property
+    def bottom(self):
+        return self.y + self.height
+
+    @property
+    def center_x(self):
+        return self.x
 
 
-# ======================== CLASS BASKET ========================
+# ──────────────────────────────────────────────────────────────────
+class Pencil(FallingObject):
+    """Pensil · +10 poin"""
+    name        = 'Pensil'
+    score_value = 10
+    is_good     = True
+    width       = 12
+    height      = 46
+
+    def _draw(self):
+        fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
+        cx, y = self.x, self.y
+        self._reg(
+            # eraser cap (top)
+            cv.create_rectangle(cx-5, y,    cx+5, y+8,  fill=bg, outline=fg, width=2),
+            # body
+            cv.create_rectangle(cx-5, y+8,  cx+5, y+36, fill=fg, outline=fg),
+            # pointed tip
+            cv.create_polygon( cx-5, y+36, cx+5, y+36, cx, y+46, fill=fg, outline=fg),
+            # center groove on body
+            cv.create_line(cx, y+10, cx, y+34, fill=bg, width=1),
+            # score label
+            cv.create_text(cx, y+22, text="+10", font=("Courier", 6, "bold"), fill=bg),
+        )
+
+
+# ──────────────────────────────────────────────────────────────────
+class Book(FallingObject):
+    """Buku · +20 poin"""
+    name        = 'Buku'
+    score_value = 20
+    is_good     = True
+    width       = 38
+    height      = 32
+
+    def _draw(self):
+        fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
+        cx, y = self.x, self.y
+        self._reg(
+            cv.create_rectangle(cx-19, y, cx+19, y+32, fill=fg, outline=fg),   # body
+            cv.create_rectangle(cx-19, y, cx-11, y+32, fill=bg, outline=fg),   # spine
+            *[cv.create_line(cx-9, y+i*8+5, cx+17, y+i*8+5,                   # page lines
+                             fill=bg, width=1) for i in range(3)],
+            cv.create_text(cx+2, y+26, text="+20", font=("Courier", 6, "bold"), fill=bg),
+        )
+
+
+# ──────────────────────────────────────────────────────────────────
+class Eraser(FallingObject):
+    """Penghapus · +15 poin"""
+    name        = 'Penghapus'
+    score_value = 15
+    is_good     = True
+    width       = 34
+    height      = 20
+
+    def _draw(self):
+        fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
+        cx, y = self.x, self.y
+        self._reg(
+            cv.create_rectangle(cx-17, y, cx+17, y+20, fill=fg, outline=fg),   # outer
+            cv.create_rectangle(cx-17, y, cx+1,  y+20, fill=bg, outline=fg),   # label strip
+            cv.create_text(cx+9, y+10, text="+15", font=("Courier", 6, "bold"), fill=bg),
+        )
+
+
+# ──────────────────────────────────────────────────────────────────
+class Ruler(FallingObject):
+    """Penggaris · +25 poin"""
+    name        = 'Penggaris'
+    score_value = 25
+    is_good     = True
+    width       = 56
+    height      = 14
+
+    def _draw(self):
+        fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
+        cx, y = self.x, self.y
+        self._reg(
+            cv.create_rectangle(cx-28, y, cx+28, y+14, fill=fg, outline=fg),   # body
+            cv.create_line(cx-28, y+7, cx+28, y+7, fill=bg, width=1),          # center line
+            *[cv.create_line(cx-23+i*10, y, cx-23+i*10, y+7,                  # tick marks
+                             fill=bg, width=1) for i in range(6)],
+            cv.create_text(cx, y+11, text="+25", font=("Courier", 6, "bold"), fill=bg),
+        )
+
+
+# ──────────────────────────────────────────────────────────────────
+class Trash(FallingObject):
+    """Sampah · -20 poin & -1 nyawa"""
+    name        = 'Sampah'
+    score_value = -20
+    is_good     = False
+    width       = 30
+    height      = 38
+
+    def _draw(self):
+        fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
+        cx, y = self.x, self.y
+        self._reg(
+            # bag tie
+            cv.create_polygon(cx-3, y, cx+3, y, cx+7, y+9, cx-7, y+9,
+                              fill=fg, outline=fg),
+            # bag body
+            cv.create_oval(cx-15, y+7, cx+15, y+38, fill=fg, outline=fg),
+            # X marks
+            cv.create_line(cx-8, y+16, cx+8, y+30, fill=bg, width=2),
+            cv.create_line(cx+8, y+16, cx-8, y+30, fill=bg, width=2),
+            cv.create_text(cx, y+34, text="-20", font=("Courier", 6, "bold"), fill=bg),
+        )
+
+
+# ══════════════════════════════════════════════════════════════════
+#  BASKET
+# ══════════════════════════════════════════════════════════════════
+
 class Basket:
-    def __init__(self, canvas):
+    WIDTH  = 80
+    HEIGHT = 36
+    SPEED  = 22
+    TAG    = 'basket'
+
+    def __init__(self, canvas, x, y, theme, canvas_w):
         self.canvas = canvas
-        self.width = 80
-        self.height = 30
-        self.x = 600
-        self.y = 650
-        self.speed = 30
-        self.id = self.canvas.create_rectangle(
-            self.x, self.y, self.x+self.width, self.y+self.height,
-            fill="white", outline="white")
+        self.x      = x
+        self.y      = y
+        self.theme  = theme
+        self._cw    = canvas_w
+        self._draw()
 
-    def move_left(self, event=None):
-        if self.x > 0:
-            self.x -= self.speed
-            self.canvas.move(self.id, -self.speed, 0)
+    def _draw(self):
+        """Draw basket from scratch using canvas TAG for bulk movement."""
+        self.canvas.delete(self.TAG)
+        fg, bg, cv = self.theme['fg'], self.theme['canvas_bg'], self.canvas
+        x, y, hw, h = self.x, self.y, self.WIDTH // 2, self.HEIGHT
+        # Trapezoid (wider at top = opening)
+        cv.create_polygon(x-hw, y, x+hw, y, x+hw-8, y+h, x-hw+8, y+h,
+                          fill=bg, outline=fg, width=2, tags=self.TAG)
+        # Horizontal weave lines
+        for i in range(1, 3):
+            cv.create_line(x-hw+i*3, y+i*12, x+hw-i*3, y+i*12,
+                           fill=fg, width=1, tags=self.TAG)
+        # Vertical weave lines
+        for i in range(-3, 4):
+            cv.create_line(x+i*11, y, x+i*9, y+h,
+                           fill=fg, width=1, tags=self.TAG)
 
-    def move_right(self, event=None):
-        if self.x < 990:
-            self.x += self.speed
-            self.canvas.move(self.id, self.speed, 0)
+    def move_left(self):
+        hw = self.WIDTH // 2
+        new_x = max(hw + 3, self.x - self.SPEED)
+        if new_x != self.x:
+            self.canvas.move(self.TAG, new_x - self.x, 0)
+            self.x = new_x
 
-    def get_coords(self):
-        return self.canvas.coords(self.id)
+    def move_right(self):
+        hw = self.WIDTH // 2
+        new_x = min(self._cw - hw - 3, self.x + self.SPEED)
+        if new_x != self.x:
+            self.canvas.move(self.TAG, new_x - self.x, 0)
+            self.x = new_x
+
+    def get_rect(self):
+        hw = self.WIDTH // 2
+        return self.x - hw, self.y, self.x + hw, self.y + self.HEIGHT
+
+    def refresh(self, theme):
+        self.theme = theme
+        self._draw()
 
 
-# ======================== CLASS SCORE POPUP ========================
+# ══════════════════════════════════════════════════════════════════
+#  SCORE POPUP  (floating +/- text)
+# ══════════════════════════════════════════════════════════════════
+
 class ScorePopup:
-    def __init__(self, canvas, x, y, text, color="white"):
+    LIFE = 28  # frames before disappearing
+
+    def __init__(self, canvas, x, y, text, theme):
         self.canvas = canvas
-        self.id = self.canvas.create_text(
-            x, y, text=text, fill=color, font=("Courier", 16, "bold"))
-        self.start_time = time.time()
-        self.duration = 0.8
+        self._id    = canvas.create_text(
+            x, y, text=text,
+            font=("Courier", 14, "bold"),
+            fill=theme['fg']
+        )
+        self._life  = self.LIFE
 
-    def update(self):
-        if time.time() - self.start_time > self.duration:
-            self.canvas.delete(self.id)
-            return False
-        return True
+    def tick(self):
+        self.canvas.move(self._id, 0, -2)
+        self._life -= 1
+
+    @property
+    def dead(self):
+        return self._life <= 0
+
+    def delete(self):
+        self.canvas.delete(self._id)
 
 
-# ======================== CLASS GAME ========================
-class Game:
-    def __init__(self, root, difficulty='easy', tema='dark'):
-        self.root = root
+# ══════════════════════════════════════════════════════════════════
+#  SCORE MANAGER
+# ══════════════════════════════════════════════════════════════════
+
+class ScoreManager:
+    TARGET = 500
+
+    def __init__(self, difficulty):
+        self.score = 0
+        self.lives = 5 if difficulty == 'easy' else 3
+
+    def add(self, value):
+        self.score = max(0, self.score + value)
+
+    def lose_life(self):
+        self.lives -= 1
+
+    @property
+    def game_over(self):
+        return self.lives <= 0
+
+    @property
+    def win(self):
+        return self.score >= self.TARGET
+
+
+# ══════════════════════════════════════════════════════════════════
+#  BASE SCREEN
+# ══════════════════════════════════════════════════════════════════
+
+class BaseScreen:
+    def __init__(self, app):
+        self.app   = app
+        self.root  = app.root
+        self.tm    = app.theme_manager
+        self.frame = None
+
+    def show(self):
+        t = self.tm.get()
+        self.frame = tk.Frame(self.root, bg=t['bg'])
+        self.frame.pack(fill='both', expand=True)
+        self.build()
+
+    def hide(self):
+        if self.frame:
+            self.frame.destroy()
+            self.frame = None
+
+    def build(self):
+        pass
+
+    # ── Widget helpers ────────────────────────
+    def _btn(self, parent, text, cmd, *, w=14, h=2, inv=False):
+        t = self.tm.get()
+        bg = t['bg'] if inv else t['btn_bg']
+        fg = t['fg'] if inv else t['btn_fg']
+        return tk.Button(
+            parent, text=text, command=cmd,
+            font=("Courier", 12, "bold"),
+            bg=bg, fg=fg,
+            activebackground=fg, activeforeground=bg,
+            relief='flat', cursor='hand2',
+            width=w, height=h,
+            highlightthickness=2,
+            highlightbackground=t['fg'],
+        )
+
+    def _lbl(self, parent, text, sz=13, bold=False, **kw):
+        t = self.tm.get()
+        return tk.Label(
+            parent, text=text,
+            font=("Courier", sz, "bold" if bold else "normal"),
+            bg=kw.get('bg', t['bg']),
+            fg=kw.get('fg', t['fg']),
+        )
+
+    def _div(self, parent, w=300, h=2):
+        return tk.Frame(parent, bg=self.tm.get()['fg'], width=w, height=h)
+
+
+# ══════════════════════════════════════════════════════════════════
+#  MAIN MENU SCREEN
+# ══════════════════════════════════════════════════════════════════
+
+class MainMenuScreen(BaseScreen):
+    def build(self):
+        t = self.tm.get()
+        self.frame.configure(bg=t['bg'])
+
+        wrap = tk.Frame(self.frame, bg=t['bg'])
+        wrap.place(relx=0.5, rely=0.48, anchor='center')
+
+        # Title
+        self._lbl(wrap, "CATCH\nTHE\nOBJECTS", sz=30, bold=True).pack()
+        self._div(wrap, w=300, h=3).pack(pady=16)
+
+        # Menu buttons
+        for txt, cmd in [
+            ("▶   PLAY",    self.app.show_difficulty),
+            ("⚙   SETTING", self.app.show_settings),
+            ("✕   EXIT",    self.root.quit),
+        ]:
+            self._btn(wrap, txt, cmd).pack(pady=7)
+
+        # Footer
+        self._lbl(self.frame, "Pixel Edition  •  v1.0", sz=8)\
+            .place(relx=0.5, rely=0.97, anchor='s')
+
+
+# ══════════════════════════════════════════════════════════════════
+#  DIFFICULTY SCREEN
+# ══════════════════════════════════════════════════════════════════
+
+class DifficultyScreen(BaseScreen):
+    def build(self):
+        t = self.tm.get()
+        self.frame.configure(bg=t['bg'])
+
+        wrap = tk.Frame(self.frame, bg=t['bg'])
+        wrap.place(relx=0.5, rely=0.5, anchor='center')
+
+        self._lbl(wrap, "PILIH KESULITAN", sz=20, bold=True).pack()
+        self._div(wrap, w=300).pack(pady=10)
+
+        # Difficulty cards
+        for label, diff, info in [
+            ("★   EASY", 'easy', "5 Nyawa  •  Kecepatan Lambat"),
+            ("★★  HARD", 'hard', "3 Nyawa  •  Kecepatan Cepat"),
+        ]:
+            card = tk.Frame(wrap, bg=t['bg'])
+            card.pack(pady=12)
+            self._btn(card, label,
+                      lambda d=diff: self.app.start_game(d),
+                      w=16).pack()
+            self._lbl(card, info, sz=9).pack(pady=3)
+
+        self._div(wrap, w=300, h=1).pack(pady=12)
+        self._btn(wrap, "← KEMBALI", self.app.show_main_menu,
+                  inv=True, w=10, h=1).pack()
+
+
+# ══════════════════════════════════════════════════════════════════
+#  SETTINGS SCREEN
+# ══════════════════════════════════════════════════════════════════
+
+class SettingsScreen(BaseScreen):
+    def build(self):
+        t = self.tm.get()
+        self.frame.configure(bg=t['bg'])
+
+        wrap = tk.Frame(self.frame, bg=t['bg'])
+        wrap.place(relx=0.5, rely=0.5, anchor='center')
+
+        self._lbl(wrap, "PENGATURAN", sz=20, bold=True).pack()
+        self._div(wrap, w=220).pack(pady=10)
+
+        # Theme section
+        self._lbl(wrap, "TEMA", sz=14, bold=True).pack(pady=(20, 5))
+        mode = "GELAP (Dark)" if self.tm.is_dark() else "TERANG (Light)"
+        self._lbl(wrap, f"Saat ini : {mode}", sz=10).pack()
+
+        nxt = "→ Ganti ke LIGHT" if self.tm.is_dark() else "→ Ganti ke DARK"
+        self._btn(wrap, nxt, self.app.toggle_theme, w=18).pack(pady=10)
+
+        self._div(wrap, w=220, h=1).pack(pady=16)
+        self._btn(wrap, "← KEMBALI", self.app.show_main_menu,
+                  inv=True, w=10, h=1).pack()
+
+
+# ══════════════════════════════════════════════════════════════════
+#  GAME SCREEN
+# ══════════════════════════════════════════════════════════════════
+
+class GameScreen(BaseScreen):
+    CW = 500   # canvas width
+    CH = 560   # canvas height
+
+    # Object pool: classes & spawn weights
+    _CLASSES = [Pencil, Book, Eraser, Ruler, Trash]
+    _WEIGHTS = [22, 17, 20, 16, 10]
+
+    def __init__(self, app, difficulty):
+        super().__init__(app)
         self.difficulty = difficulty
-        self.tema = tema
-        self.canvas = tk.Canvas(root, width=1280, height=720, highlightthickness=0)
-        self.canvas.pack()
+        self._speed     = 1.8 if difficulty == 'easy' else 3.6
+        self._spawn_ms  = 1900 if difficulty == 'easy' else 1100
+        self.sm         = ScoreManager(difficulty)
+        self.basket     = None
+        self.objects    = []   # active FallingObject instances
+        self.popups     = []   # active ScorePopup instances
+        self.keys       = set()
+        self.paused     = False
+        self.running    = False
+        self._afters    = []   # after() IDs to cancel on exit
 
-        if tema == 'dark':
-            self.bg = 'black'
-            self.fg = 'white'
-        else:
-            self.bg = 'white'
-            self.fg = 'black'
-        self.canvas.configure(bg=self.bg)
+    # ── Build UI ──────────────────────────────────────────────────
+    def build(self):
+        t = self.tm.get()
+        self.frame.configure(bg=t['bg'])
 
-        self.target_skor = 300
-        self.skor = 0
-        self.nyawa = 5 if difficulty == 'easy' else 3
-        self.game_over = False
-        self.paused = False
-        self.loop_running = False 
+        # ── Top bar ──────────────────────────────────
+        bar = tk.Frame(self.frame, bg=t['bg'])
+        bar.pack(fill='x', padx=10, pady=(8, 4))
 
-        if difficulty == 'easy':
-            self.base_speed = 3
-            self.spawn_rate = 55  
-            self.sampah_chance = 0.25
-        else:
-            self.base_speed = 8
-            self.spawn_rate = 30
-            self.sampah_chance = 0.5
+        self.score_lbl = tk.Label(
+            bar, text=self._score_txt(),
+            font=("Courier", 12, "bold"),
+            bg=t['bg'], fg=t['fg']
+        )
+        self.score_lbl.pack(side='left')
 
+        self.lives_lbl = tk.Label(
+            bar, text=self._lives_txt(),
+            font=("Courier", 12, "bold"),
+            bg=t['bg'], fg=t['fg']
+        )
+        self.lives_lbl.pack(side='left', padx=14)
 
-        self.basket = Basket(self.canvas)
-        self.objects = []
-        self.popups = []
-        self.frame_count = 0
-        self.ui_skor = self.canvas.create_text(
-            100, 30, text=f"0/{self.target_skor}", fill=self.fg, font=("Courier", 18, "bold"))
-        self.ui_nyawa = self.canvas.create_text(
-            200, 30, text=f"♥ {self.nyawa}", fill=self.fg, font=("Courier", 18, "bold"))
-        self.pause_btn = self.canvas.create_text(
-            1230, 30, text="⏸ Pause", fill=self.fg, font=("Courier", 14, "bold"),
-            activefill="gray")
-        self.canvas.tag_bind(self.pause_btn, "<Button-1>", lambda e: self.toggle_pause())
+        tk.Label(
+            bar, text=f"[{self.difficulty.upper()}]",
+            font=("Courier", 10, "bold"),
+            bg=t['bg'], fg=t['fg']
+        ).pack(side='left')
 
-        root.bind("<Left>", self.basket.move_left)
-        root.bind("<Right>", self.basket.move_right)
-        root.bind("<a>", self.basket.move_left)
-        root.bind("<A>", self.basket.move_left)
-        root.bind("<d>", self.basket.move_right)
-        root.bind("<D>", self.basket.move_right)
-        root.bind("<p>", lambda e: self.toggle_pause())
-        root.bind("<P>", lambda e: self.toggle_pause())
+        self.pause_btn = tk.Button(
+            bar, text="⏸ PAUSE",
+            font=("Courier", 10, "bold"),
+            bg=t['btn_bg'], fg=t['btn_fg'],
+            relief='flat', cursor='hand2',
+            command=self.toggle_pause
+        )
+        self.pause_btn.pack(side='right')
 
-        self.game_loop()
+        # ── Canvas ───────────────────────────────────
+        self.cv = tk.Canvas(
+            self.frame,
+            width=self.CW, height=self.CH,
+            bg=t['canvas_bg'],
+            highlightthickness=2,
+            highlightbackground=t['fg']
+        )
+        self.cv.pack()
 
-    def toggle_pause(self):
-        self.paused = not self.paused
-        if self.paused:
-            self.canvas.itemconfig(self.pause_btn, text="▶ Play")
-            self.loop_running = False
-        else:
-            self.canvas.itemconfig(self.pause_btn, text="⏸ Pause")
-            if not self.loop_running:
-                self.game_loop()
+        # ── Hint ─────────────────────────────────────
+        tk.Label(
+            self.frame,
+            text="← → / A D  Gerakkan Keranjang   |   P  Pause",
+            font=("Courier", 8),
+            bg=t['bg'], fg=t['fg']
+        ).pack(pady=4)
 
-    def spawn_object(self):
-        if random.random() < self.sampah_chance:
-            jenis = 'sampah'
-            skor = -30 if self.difficulty == 'easy' else -50
-        else:
-            barang = [
-                ('pensil', 10),
-                ('buku', 20),
-                ('penghapus', 15),
-                ('penggaris', 25)
-            ]
-            jenis, skor = random.choice(barang)
+        self._init_game()
 
-        x = random.randint(50, 1000)
-        obj = GameObject(self.canvas, x, 0, self.base_speed, skor, jenis)
-        obj.draw()
-        self.objects.append(obj)
+    # ── Init game ─────────────────────────────────────────────────
+    def _init_game(self):
+        t = self.tm.get()
+        self.basket = Basket(self.cv, self.CW // 2, self.CH - 65, t, self.CW)
+        self.running = True
+        self._bind_keys()
+        self._schedule_spawn()
+        self._loop()
 
-    def check_collision(self, obj):
-        if not obj.active:
-            return False
-        basket_coords = self.basket.get_coords()
-        obj_coords = obj.get_coords()
-        if not basket_coords or not obj_coords:
-            return False
-        bx1, by1, bx2, by2 = basket_coords
-        ox1, oy1, ox2, oy2 = obj_coords
-        if (bx1 < ox2 and bx2 > ox1 and by1 < oy2 and by2 > oy1):
-            return True
-        return False
+    # ── Key bindings ──────────────────────────────────────────────
+    def _bind_keys(self):
+        b = self.root.bind
+        b('<Left>',             lambda e: self.keys.add('l'))
+        b('<Right>',            lambda e: self.keys.add('r'))
+        b('<a>',                lambda e: self.keys.add('l'))
+        b('<d>',                lambda e: self.keys.add('r'))
+        b('<KeyRelease-Left>',  lambda e: self.keys.discard('l'))
+        b('<KeyRelease-Right>', lambda e: self.keys.discard('r'))
+        b('<KeyRelease-a>',     lambda e: self.keys.discard('l'))
+        b('<KeyRelease-d>',     lambda e: self.keys.discard('r'))
+        b('<p>',                lambda e: self.toggle_pause())
+        b('<P>',                lambda e: self.toggle_pause())
 
-    def handle_catch(self, obj):
-        self.skor += obj.skor
-        if self.skor < 0:
-            self.skor = 0  
-        if obj.skor > 0:
-            text = f"+{int(obj.skor)}"
-        else:
-            text = f"{int(obj.skor)}"
-        popup = ScorePopup(self.canvas, self.basket.x+40, self.basket.y-20, text, self.fg)
-        self.popups.append(popup)
+    def _unbind_keys(self):
+        for k in ('<Left>', '<Right>', '<a>', '<d>',
+                  '<KeyRelease-Left>', '<KeyRelease-Right>',
+                  '<KeyRelease-a>', '<KeyRelease-d>', '<p>', '<P>'):
+            try:
+                self.root.unbind(k)
+            except Exception:
+                pass
 
-        if obj.jenis == 'sampah':
-            self.nyawa -= 1
-            self.canvas.itemconfig(self.ui_nyawa, text=f"♥ {self.nyawa}")
+    def _cancel_afters(self):
+        for a in self._afters:
+            try:
+                self.root.after_cancel(a)
+            except Exception:
+                pass
+        self._afters.clear()
 
-        obj.active = False
-        self.canvas.delete(obj.id)
-        self.objects.remove(obj)
-        self.canvas.itemconfig(self.ui_skor, text=f"{self.skor}/{self.target_skor}")
+    def hide(self):
+        self.running = False
+        self._unbind_keys()
+        self._cancel_afters()
+        super().hide()
 
-        if self.skor >= self.target_skor:
-            self.end_game("menang")
-        elif self.nyawa <= 0:
-            self.end_game("kalah")
+    # ── HUD helpers ───────────────────────────────────────────────
+    def _score_txt(self):
+        return f"SKOR: {self.sm.score}/{ScoreManager.TARGET}"
 
-    def end_game(self, hasil):
-        self.game_over = True
-        self.loop_running = False
-        self.root.unbind("<Left>")
-        self.root.unbind("<Right>")
-        self.root.unbind("<a>")
-        self.root.unbind("<A>")
-        self.root.unbind("<d>")
-        self.root.unbind("<D>")
-        self.canvas.create_text(
-            640, 360, text=f"GAME {hasil.upper()}", fill=self.fg,
-            font=("Courier", 36, "bold"))
-        self.root.after(1500, self.back_to_menu)
+    def _lives_txt(self):
+        return "♥ " * self.sm.lives
 
-    def back_to_menu(self):
-        self.canvas.destroy()
-        Menu(self.root, self.tema)
+    def _update_hud(self):
+        self.score_lbl.config(text=self._score_txt())
+        self.lives_lbl.config(text=self._lives_txt())
 
-    def game_loop(self):
-        if self.game_over or self.paused:
-            self.loop_running = False
+    # ── Spawn logic ───────────────────────────────────────────────
+    def _schedule_spawn(self):
+        if not self.running:
             return
-        self.loop_running = True
-        self.frame_count += 1
-        if self.frame_count % self.spawn_rate == 0:
-            self.spawn_object()
+        aid = self.root.after(self._spawn_ms, self._spawn)
+        self._afters.append(aid)
+
+    def _spawn(self):
+        if not self.running:
+            return
+        if not self.paused:
+            t = self.tm.get()
+            x   = random.randint(55, self.CW - 55)
+            cls = random.choices(self._CLASSES, weights=self._WEIGHTS)[0]
+            self.objects.append(cls(self.cv, x, -65, t))
+        self._schedule_spawn()
+
+    # ── Main game loop (~60 fps) ──────────────────────────────────
+    def _loop(self):
+        if not self.running:
+            return
+
+        if not self.paused:
+            # Basket movement
+            if 'l' in self.keys:
+                self.basket.move_left()
+            if 'r' in self.keys:
+                self.basket.move_right()
+
+            # Objects movement + collision
+            self._process_objects()
+
+            # Animate score popups
+            for p in self.popups[:]:
+                p.tick()
+                if p.dead:
+                    p.delete()
+                    self.popups.remove(p)
+
+            # Refresh HUD
+            self._update_hud()
+
+            # End conditions
+            if self.sm.game_over:
+                self._show_end(won=False)
+                return
+            if self.sm.win:
+                self._show_end(won=True)
+                return
+
+        aid = self.root.after(16, self._loop)
+        self._afters.append(aid)
+
+    def _process_objects(self):
+        bx1, by1, bx2, _ = self.basket.get_rect()
+        threshold = by1 + self._speed + 18  # collision window
 
         for obj in self.objects[:]:
-            if not obj.fall():  
-                if obj in self.objects:
-                    self.objects.remove(obj)
-            elif self.check_collision(obj):
-                self.handle_catch(obj)
-                if self.game_over:
-                    return
-                  
-        for pop in self.popups[:]:
-            if not pop.update():
-                self.popups.remove(pop)
+            obj.move(self._speed)
 
-        if not self.game_over and not self.paused:
-            self.root.after(30, self.game_loop)
+            # Fell off bottom → remove silently
+            if obj.y > self.CH + 20:
+                obj.delete()
+                self.objects.remove(obj)
+                continue
+
+            # Collision: object bottom enters basket opening
+            if (by1 <= obj.bottom <= threshold and
+                    bx1 <= obj.center_x <= bx2):
+                self._catch(obj)
+                obj.delete()
+                self.objects.remove(obj)
+
+    def _catch(self, obj):
+        """Handle an object landing in the basket."""
+        self.sm.add(obj.score_value)
+
+        # Popup text
+        sign = '+' if obj.score_value >= 0 else ''
+        popup_text = f"{sign}{obj.score_value}"
+
+        if not obj.is_good:
+            self.sm.lose_life()
+            popup_text += " -♥"   # visual life-loss indicator
+
+        self.popups.append(
+            ScorePopup(self.cv, obj.center_x, self.basket.y - 20,
+                       popup_text, self.tm.get())
+        )
+
+    # ── Pause / Resume ────────────────────────────────────────────
+    def toggle_pause(self):
+        if not self.running:
+            return
+        self.paused = not self.paused
+        t = self.tm.get()
+
+        if self.paused:
+            self.pause_btn.config(text="▶ RESUME")
+            cx, cy = self.CW // 2, self.CH // 2
+            self._pause_box = self.cv.create_rectangle(
+                cx-148, cy-78, cx+148, cy+78,
+                fill=t['canvas_bg'], outline=t['fg'], width=3
+            )
+            self._pause_txt = self.cv.create_text(
+                cx, cy,
+                text="⏸  JEDA\n\n[P] untuk melanjutkan",
+                font=("Courier", 18, "bold"),
+                fill=t['fg'], justify='center'
+            )
         else:
-            self.loop_running = False
+            self.pause_btn.config(text="⏸ PAUSE")
+            for attr in ('_pause_box', '_pause_txt'):
+                if hasattr(self, attr):
+                    self.cv.delete(getattr(self, attr))
+
+    # ── End game overlay ──────────────────────────────────────────
+    def _show_end(self, won):
+        self.running = False
+        self._unbind_keys()
+        self._cancel_afters()
+
+        t = self.tm.get()
+        cx, cy = self.CW // 2, self.CH // 2
+
+        # Panel background
+        self.cv.create_rectangle(
+            cx-215, cy-175, cx+215, cy+175,
+            fill=t['canvas_bg'], outline=t['fg'], width=3
+        )
+
+        # Header
+        title = "★  KAMU MENANG!  ★" if won else "✕  GAME OVER  ✕"
+        self.cv.create_text(
+            cx, cy - 125,
+            text=title,
+            font=("Courier", 18, "bold"),
+            fill=t['fg']
+        )
+
+        # Stats
+        self.cv.create_text(
+            cx, cy - 82,
+            text=f"Skor Akhir : {self.sm.score}/{ScoreManager.TARGET}",
+            font=("Courier", 13),
+            fill=t['fg']
+        )
+        self.cv.create_text(
+            cx, cy - 54,
+            text=f"Difficulty : {self.difficulty.upper()}",
+            font=("Courier", 12),
+            fill=t['fg']
+        )
+
+        # Divider
+        self.cv.create_line(cx-165, cy-28, cx+165, cy-28,
+                            fill=t['fg'], width=1)
+
+        # Scoreboard reminder
+        self.cv.create_text(
+            cx, cy - 8,
+            text="Pensil+10  Hapus+15  Buku+20  Garis+25",
+            font=("Courier", 8),
+            fill=t['fg']
+        )
+
+        # Action buttons (embedded in canvas via create_window)
+        for lbl, cmd, oy in [
+            ("↺  MAIN LAGI",
+             lambda: self.root.after(0, lambda: self.app.start_game(self.difficulty)),
+             45),
+            ("⌂  MENU UTAMA",
+             lambda: self.root.after(0, self.app.show_main_menu),
+             100),
+        ]:
+            btn = tk.Button(
+                self.cv, text=lbl,
+                font=("Courier", 11, "bold"),
+                bg=t['btn_bg'], fg=t['btn_fg'],
+                relief='flat', cursor='hand2',
+                command=cmd
+            )
+            self.cv.create_window(cx, cy + oy,
+                                  window=btn, width=195, height=40)
 
 
-# ======================== CLASS MENU ========================
-class Menu:
-    def __init__(self, root, tema='dark'):
-        self.root = root
-        self.tema = tema
-        self.canvas = tk.Canvas(root, width=1080, height=720, highlightthickness=0)
-        self.canvas.pack()
+# ══════════════════════════════════════════════════════════════════
+#  APPLICATION  (root controller)
+# ══════════════════════════════════════════════════════════════════
 
-        if tema == 'dark':
-            self.bg = 'black'
-            self.fg = 'white'
-        else:
-            self.bg = 'white'
-            self.fg = 'black'
-        self.canvas.configure(bg=self.bg)
+class App:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Catch Falling Objects")
+        self.root.geometry("520x720")
+        self.root.resizable(False, False)
 
-        self.canvas.create_text(
-            540, 150, text="CATCH FALLING OBJECT",
-            fill=self.fg, font=("Courier", 32, "bold"))
-        self.canvas.create_text(
-            540, 200, text="[ PIXEL EDITION ]",
-            fill=self.fg, font=("Courier", 16))
+        self.theme_manager = ThemeManager()
+        self._screen: BaseScreen | None = None
 
-        self.play_btn = self.canvas.create_text(
-            540, 320, text="▶ PLAY", fill=self.fg,
-            font=("Courier", 24, "bold"), activefill="gray")
-        self.canvas.tag_bind(self.play_btn, "<Button-1>", self.choose_difficulty)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.show_main_menu()
+        self.root.mainloop()
 
-        self.settings_btn = self.canvas.create_text(
-            540, 400, text="⚙ SETTINGS", fill=self.fg,
-            font=("Courier", 24, "bold"), activefill="gray")
-        self.canvas.tag_bind(self.settings_btn, "<Button-1>", self.open_settings)
+    # ── Screen switching ──────────────────────────────────────────
+    def _switch(self, screen: BaseScreen):
+        if self._screen:
+            self._screen.hide()
+        self._screen = screen
+        self._screen.show()
+        self.root.configure(bg=self.theme_manager.get()['bg'])
 
-        self.exit_btn = self.canvas.create_text(
-            540, 480, text="✕ EXIT", fill=self.fg,
-            font=("Courier", 24, "bold"), activefill="gray")
-        self.canvas.tag_bind(self.exit_btn, "<Button-1>", lambda e: root.destroy())
+    # ── Public navigation methods ─────────────────────────────────
+    def show_main_menu(self):
+        self._switch(MainMenuScreen(self))
 
-    def choose_difficulty(self, event):
-        self.canvas.delete("all")
-        self.canvas.create_text(
-            540, 200, text="SELECT DIFFICULTY",
-            fill=self.fg, font=("Courier", 28, "bold"))
+    def show_difficulty(self):
+        self._switch(DifficultyScreen(self))
 
-        easy_btn = self.canvas.create_text(
-            540, 320, text="EASY (♥ 5)", fill=self.fg,
-            font=("Courier", 22), activefill="gray")
-        hard_btn = self.canvas.create_text(
-            540, 400, text="HARD (♥ 3)", fill=self.fg,
-            font=("Courier", 22), activefill="gray")
-        back_btn = self.canvas.create_text(
-            540, 560, text="← BACK", fill=self.fg,
-            font=("Courier", 18), activefill="gray")
+    def show_settings(self):
+        self._switch(SettingsScreen(self))
 
-        self.canvas.tag_bind(easy_btn, "<Button-1>",
-                              lambda e: self.start_game('easy'))
-        self.canvas.tag_bind(hard_btn, "<Button-1>",
-                              lambda e: self.start_game('hard'))
-        self.canvas.tag_bind(back_btn, "<Button-1>",
-                              lambda e: self.refresh_menu())
+    def toggle_theme(self):
+        self.theme_manager.toggle()
+        self.show_settings()
 
-    def start_game(self, difficulty):
-        self.canvas.destroy()
-        Game(self.root, difficulty, self.tema)
+    def start_game(self, difficulty: str):
+        self._switch(GameScreen(self, difficulty))
 
-    def open_settings(self, event):
-        self.canvas.delete("all")
-        self.canvas.create_text(
-            540, 200, text="SETTINGS",
-            fill=self.fg, font=("Courier", 28, "bold"))
-        self.canvas.create_text(
-            540, 280, text=f"Current theme: {'DARK' if self.tema=='dark' else 'LIGHT'}",
-            fill=self.fg, font=("Courier", 18))
-
-        toggle_btn = self.canvas.create_text(
-            540, 360, text="TOGGLE THEME", fill=self.fg,
-            font=("Courier", 22, "bold"), activefill="gray")
-        back_btn = self.canvas.create_text(
-            540, 440, text="← BACK", fill=self.fg,
-            font=("Courier", 18), activefill="gray")
-
-        self.canvas.tag_bind(toggle_btn, "<Button-1>", self.toggle_theme)
-        self.canvas.tag_bind(back_btn, "<Button-1>", lambda e: self.refresh_menu())
-
-    def toggle_theme(self, event):
-        self.tema = 'light' if self.tema == 'dark' else 'dark'
-        self.open_settings(None) 
-
-    def refresh_menu(self):
-        self.canvas.destroy()
-        Menu(self.root, self.tema)
+    # ── Safe close ────────────────────────────────────────────────
+    def _on_close(self):
+        if self._screen and hasattr(self._screen, 'running'):
+            self._screen.running = False
+        self.root.destroy()
 
 
-# ======================== MAIN ========================
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Catch Falling Object - Pixel Edition")
-    root.geometry("1080x720")
-    root.resizable(False, False)
-    Menu(root, tema='dark')
-    root.mainloop()
+# ══════════════════════════════════════════════════════════════════
+#  ENTRY POINT
+# ══════════════════════════════════════════════════════════════════
+
+if __name__ == '__main__':
+    App()
