@@ -645,7 +645,7 @@ class GameScreen(BaseScreen):
             obj.move(self._speed)
 
             # Fell off bottom → remove silently
-            if obj.y > self.CH + 20:
+            if obj.y > self.CH + 2:
                 obj.delete()
                 self.objects.remove(obj)
                 continue
