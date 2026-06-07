@@ -639,7 +639,7 @@ class GameScreen(BaseScreen):
 
     def _process_objects(self):
         bx1, by1, bx2, _ = self.basket.get_rect()
-        threshold = by1 + self._speed + 18  # collision window
+        threshold = by1 + self._speed + 8  # collision window
 
         for obj in self.objects[:]:
             obj.move(self._speed)
@@ -670,7 +670,7 @@ class GameScreen(BaseScreen):
             popup_text += " -♥"   # visual life-loss indicator
 
         self.popups.append(
-            ScorePopup(self.cv, obj.center_x, self.basket.y - 20,
+            ScorePopup(self.cv, obj.center_x, self.basket.y - 2,
                        popup_text, self.tm.get())
         )
 
