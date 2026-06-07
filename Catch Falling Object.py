@@ -106,7 +106,7 @@ class Pencil(FallingObject):
 class Book(FallingObject):
     """Buku · +20 poin"""
     name        = 'Buku'
-    score_value = 20
+    score_value = 25
     is_good     = True
     width       = 36
     height      = 30
@@ -127,7 +127,7 @@ class Book(FallingObject):
 class Eraser(FallingObject):
     """Penghapus · +15 poin"""
     name        = 'Penghapus'
-    score_value = 15
+    score_value = 17
     is_good     = True
     width       = 34
     height      = 20
@@ -146,7 +146,7 @@ class Eraser(FallingObject):
 class Ruler(FallingObject):
     """Penggaris · +25 poin"""
     name        = 'Penggaris'
-    score_value = 25
+    score_value = 23
     is_good     = True
     width       = 56
     height      = 14
