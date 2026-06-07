@@ -670,7 +670,7 @@ class GameScreen(BaseScreen):
             popup_text += " -♥"   # visual life-loss indicator
 
         self.popups.append(
-            ScorePopup(self.cv, obj.center_x, self.basket.y - 2,
+            ScorePopup(self.cv, obj.center_x, self.basket.y - 18,
                        popup_text, self.tm.get())
         )
 
