@@ -14,7 +14,6 @@ Catch Falling Object adalah permainan 2D sederhana yang dikembangkan menggunakan
 - Dibangun menggunakan konsep Pemrograman Berorientasi Objek (OOP).
 
 ## Controls
-- A / Left Arrow : Move Left
 A / Panah Kiri : Bergerak ke kiri.
 D / Panah Kanan : Bergerak ke kanan.
 P : Menjeda (Pause) atau melanjutkan (Resume) permainan.
