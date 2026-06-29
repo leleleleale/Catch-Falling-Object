@@ -14,9 +14,9 @@ Catch Falling Object adalah permainan 2D sederhana yang dikembangkan menggunakan
 - Dibangun menggunakan konsep Pemrograman Berorientasi Objek (OOP).
 
 ## Controls
-A / Panah Kiri : Bergerak ke kiri.
-D / Panah Kanan : Bergerak ke kanan.
-P : Menjeda (Pause) atau melanjutkan (Resume) permainan.
+- A / Panah Kiri : Bergerak ke kiri.
+- D / Panah Kanan : Bergerak ke kanan.
+- P : Menjeda (Pause) atau melanjutkan (Resume) permainan.
 
 ## Requirements
 - Python 3.x
