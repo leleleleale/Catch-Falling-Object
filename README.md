@@ -3,15 +3,15 @@
 Final Project for Object-Oriented Programming Course.
 
 ## Description
-Catch Falling Object is a simple 2D game built using Python and Tkinter. Players must catch useful school items while avoiding trash to reach the target score.
+Catch Falling Object adalah permainan 2D sederhana yang dikembangkan menggunakan Python dan Tkinter sebagai proyek akhir mata kuliah Pemrograman Berorientasi Objek (Object-Oriented Programming/OOP). Dalam permainan ini, pemain harus menangkap berbagai perlengkapan sekolah yang bermanfaat sambil menghindari sampah yang jatuh dari atas layar untuk mencapai skor target dan menyelesaikan permainan.
 
 ## Features
-- Easy and Hard difficulty modes
-- Dark and Light themes
-- Score and life system
-- Pause and Resume
-- Object collision detection
-- Built using Object-Oriented Programming (OOP)
+- Pilihan tingkat kesulitan Easy dan Hard.
+- Pilihan tema tampilan Dark Mode dan Light Mode.
+- Sistem skor dan nyawa (life).
+- Fitur Pause dan Resume untuk menghentikan dan melanjutkan permainan.
+- Deteksi tabrakan (collision detection) antara pemain dan objek yang jatuh.
+- Dibangun menggunakan konsep Pemrograman Berorientasi Objek (OOP).
 
 ## Controls
 - A / Left Arrow : Move Left
