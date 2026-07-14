@@ -8,7 +8,7 @@ Catch Falling Object adalah permainan 2D sederhana yang dikembangkan menggunakan
 ## Features
 - Pilihan tingkat kesulitan Easy dan Hard.
 - Pilihan tema tampilan Dark Mode dan Light Mode.
-- Sistem skor dan nyawa (life).
+- Sistem skor dan nyawa (life). 
 - Fitur Pause dan Resume untuk menghentikan dan melanjutkan permainan.
 - Deteksi tabrakan (collision detection) antara pemain dan objek yang jatuh.
 - Dibangun menggunakan konsep Pemrograman Berorientasi Objek (OOP).
